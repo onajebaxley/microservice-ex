@@ -1,0 +1,261 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+
+    "Description": "AWS CloudFormation Template for my DynamoDB table",
+
+    "Parameters": {
+        "DemographicsTableHashKeyElementName": {
+            "Description": "HashType Primary key name",
+            "Type": "String",
+            "AllowedPattern": "[a-zA-Z0-9_]*",
+            "MinLength": "1",
+            "MaxLength": "2048",
+            "Default": "zip_code",
+            "ConstraintDescription": "must contain only alphanumeric characters and underscores"
+        },
+        "DemographicsTableReadCapacityUnits": {
+            "Description": "Provisioned read throughput",
+            "Type": "Number",
+            "Default": "5",
+            "MinValue": "1",
+            "MaxValue": "9",
+            "ConstraintDescription": "must be between 1 and 9"
+        },
+        "DemographicsTableWriteCapacityUnits": {
+            "Description": "Provisioned write throughput",
+            "Type": "Number",
+            "Default": "5",
+            "MinValue": "1",
+            "MaxValue": "9",
+            "ConstraintDescription": "must be between 1 and 9"
+        }
+    },
+
+    "Resources": {
+        "lambdaExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [ {
+                        "Effect": "Allow",
+                        "Principal": { "Service": [ "lambda.amazonaws.com", "edgelambda.amazonaws.com" ] },
+                        "Action": [ "sts:AssumeRole" ]
+                    }  ]
+                },
+                "Policies": [  {
+                    "PolicyName": "cfGeneratedLambdaExecutionRole",
+                    "PolicyDocument": {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                            {
+                                "Effect": "Allow",
+                                "Action": [
+                                    "logs:CreateLogGroup",
+                                    "logs:CreateLogStream",
+                                    "logs:PutLogEvents"
+                                ],
+                                "Resource": [
+                                    "arn:aws:logs:*:*:*"
+                                ]
+                            }
+                        ]
+                    }
+                }  ],
+                "Path": "/service-role/",
+                "RoleName": "cfGeneratedDemographicsLambdaRole",
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess",
+                    "arn:aws:iam::aws:policy/AmazonAPIGatewayInvokeFullAccess",
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaRole",
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"                    
+                ]
+            },
+            "DependsOn": []
+        },
+        "apiLambdaInvokePermission": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "FunctionName": "arn:aws:lambda:us-east-1:226934529914:function:handleDemographicsRequest",
+                "Action": "lambda:InvokeFunction",
+                "Principal": "apigateway.amazonaws.com",
+                "SourceAccount": { "Ref": "AWS::AccountId" }
+            },
+            "DependsOn": [ "listAllDemographicsFunction", "demographicsGET" ]
+        },
+        "cfGeneratedDynamoDBTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+                "TableName": "cf_generated_demographics",
+                "AttributeDefinitions": [
+                    { "AttributeName": { "Ref": "DemographicsTableHashKeyElementName" }, "AttributeType": "N" }
+                ],
+                "KeySchema": [
+                    { "AttributeName": { "Ref": "DemographicsTableHashKeyElementName" }, "KeyType": "HASH" }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": { "Ref": "DemographicsTableReadCapacityUnits" },
+                    "WriteCapacityUnits": { "Ref": "DemographicsTableWriteCapacityUnits" }
+                },
+                "LocalSecondaryIndexes": [],
+                "GlobalSecondaryIndexes": []
+            },
+            "DependsOn": []
+        },
+        "listAllDemographicsFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "FunctionName": "listAllDemographics",
+                "Description": "Lists all demographics statistics available across zip code jurisdicitons",
+                "Handler": "index.listAllDemographicsHandler",
+                "Code": {
+                    "ZipFile": "module.exports.listAllDemographicsHandler = (event, context, callback) => { callback(null, 'listAllDemographicsHandler executed successfully'); };"
+                },
+                "Environment": {
+                    "Variables": { "accessKeyId":"<keyIdHere>", "secretAccessKey":"<secretHere>" }
+                },
+                "Role": "arn:aws:iam::226934529914:role/service-role/cfGeneratedDemographicsLambdaRole",
+                "Runtime": "nodejs6.10",
+                "MemorySize": 128,
+                "Timeout": 3
+            },
+            "DependsOn": [ "lambdaExecutionRole" ]
+        },
+        "getSpecificDemographicsFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "FunctionName": "getSpecificDemographics",
+                "Description": "Returns demographics statistics available for specifc zip code",
+                "Handler": "index.getSpecificDemographicsHandler",
+                "Code": {
+                    "ZipFile": "module.exports.getSpecificDemographicsHandler = (event, context, callback) => { callback(null, 'getSpecificDemographicsHandler executed successfully'); };"
+                },
+                "Environment": {
+                    "Variables": { "accessKeyId":"<keyIdHere>", "secretAccessKey":"<secretHere>" }
+                },
+                "Role": "arn:aws:iam::226934529914:role/service-role/cfGeneratedDemographicsLambdaRole",
+                "Runtime": "nodejs6.10",
+                "MemorySize": 128,
+                "Timeout": 3
+            },
+            "DependsOn": [ "lambdaExecutionRole" ]
+        },
+        "createDemographicsFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "FunctionName": "createDemographics",
+                "Description": "Creates a record of the demographics statistics for the given zip code",
+                "Handler": "index.putDemographicsHandler",
+                "Code": {
+                    "ZipFile": "module.exports.putDemographicsHandler  = (event, context, callback) => { callback(null, 'putDemographicsHandler executed successfully'); };"
+                },
+                "Environment": {
+                    "Variables": { "accessKeyId":"<keyIdHere>", "secretAccessKey":"<secretHere>" }
+                },
+                "Role": "arn:aws:iam::226934529914:role/service-role/cfGeneratedDemographicsLambdaRole",
+                "Runtime": "nodejs6.10",
+                "MemorySize": 128,
+                "Timeout": 3
+            },
+            "DependsOn": [ "lambdaExecutionRole" ]
+        },
+        "deleteDemographicsFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "FunctionName": "deleteDemographics",
+                "Description": "Deletes the record of demographics statistics for the given zip code if applicable",
+                "Handler": "index.deleteDemographicsHandler",
+                "Code": {
+                    "ZipFile": "module.exports.deleteDemographicsHandler = (event, context, callback) => { callback(null, 'deleteDemographicsHandler executed successfully'); };"
+                },
+                "Environment": {
+                    "Variables": { "accessKeyId":"<keyIdHere>", "secretAccessKey":"<secretHere>" }
+                },
+                "Role": "arn:aws:iam::226934529914:role/service-role/cfGeneratedDemographicsLambdaRole",
+                "Runtime": "nodejs6.10",
+                "MemorySize": 128,
+                "Timeout": 3
+            },
+            "DependsOn": [ "lambdaExecutionRole" ]
+        },
+        "demographicsRestApi": {
+            "Type": "AWS::ApiGateway::RestApi",
+            "Properties": {
+                "Description": "rest api of the demographics ex microservice",
+                "Name": "cf_generated_demographics_api",
+                "EndpointConfiguration": { "Types": [ "REGIONAL" ] }
+            }
+        },
+        "demographicsResource": {
+            "Type": "AWS::ApiGateway::Resource",
+            "Properties": {
+                "RestApiId": { "Ref": "demographicsRestApi" },
+                "ParentId": { "Fn::GetAtt": ["demographicsRestApi","RootResourceId"] },
+                "PathPart": "demographics"
+            }
+        },
+        "demographicsZipCodeResource": {
+            "Type": "AWS::ApiGateway::Resource",
+            "Properties": {
+                "RestApiId": { "Ref": "demographicsRestApi" },
+                "ParentId": { "Ref": "demographicsResource" },
+                "PathPart": "{zipcode}"
+            },
+            "DependsOn": []
+        },
+        "demographicsGET": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+                "ApiKeyRequired": false,
+                "AuthorizationType": "NONE",
+                "ResourceId": { "Ref": "demographicsResource" },
+                "RestApiId": { "Ref": "demographicsRestApi" },
+                "HttpMethod": "GET",
+                "Integration": {
+                    "Type": "AWS",
+                    "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:226934529914:function:handleDemographicsRequest/invocations",
+                    "IntegrationHttpMethod": "POST",
+                    "PassthroughBehavior": "NEVER",
+                    "RequestTemplates": {
+                        "application/json": "#set($inputRoot = $input.path('$'))\n{\n\"method\": \"GET\"\n}"
+                    },
+                    "IntegrationResponses": [
+                        { "StatusCode": "400" },
+                        { "StatusCode": "403" },
+                        { "StatusCode": "404" },
+                        { "StatusCode": "500" },
+                        { "StatusCode": "200" }
+                    ]
+                },
+                "MethodResponses": [
+                    { "StatusCode": "400", "ResponseModels": { "application/json": "Error" } },
+                    { "StatusCode": "403", "ResponseModels": { "application/json": "Error" } },
+                    { "StatusCode": "404", "ResponseModels": { "application/json": "Error" } },
+                    { "StatusCode": "500", "ResponseModels": { "application/json": "Error" } },
+                    { "StatusCode": "200" }
+                ]
+            }
+        },
+        "stageV1ApiDeployment": {
+            "Type": "AWS::ApiGateway::Deployment",
+            "Properties": {
+                "Description": "The v1 auto deployment of the demographics api via CloudFormation",
+                "RestApiId": { "Ref": "demographicsRestApi" },
+                "StageDescription": {
+                    "Description": "The v1 auto deployment of the demographics api via CloudFormation",
+                    "CacheDataEncrypted": false
+                },
+                "StageName": "v1"
+            },
+            "DependsOn": [ "demographicsGET" ]
+        }
+    },
+
+    "Outputs": {
+        "TableName" : {
+            "Value": {"Ref": "cfGeneratedDynamoDBTable"},
+            "Description": "Table name of the newly created DynamoDB table"
+        }
+    }
+}
+

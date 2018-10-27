@@ -1,0 +1,30 @@
+{
+  "name": "microservice-ex",
+  "version": "1.0.0",
+  "description": "Example AWS Lambda-based microservice",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/onajebaxley/microservice-ex.git"
+  },
+  "keywords": [
+    "aws",
+    "lambda",
+    "function",
+    "dynamodb"
+  ],
+  "author": "Onaje Baxley",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/onajebaxley/microservice-ex/issues"
+  },
+  "homepage": "https://github.com/onajebaxley/microservice-ex#readme",
+  "dependencies": {
+    "aws-dynamodb": "^0.1.69",
+    "aws-sdk": "^2.228.1",
+    "bluebird": "^3.5.1"
+  }
+}
